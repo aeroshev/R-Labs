@@ -2,12 +2,17 @@
 title: "R Notebook"
 output: html_notebook
 ---
-Import require libraries
+I install package in UI R Studio, but you can install with commands
+```{r}
+install.packages("pacman")
+library(pacman)
+```
+Import require libraries wit help pacman
 ```{r}
 pacman::p_load(pacman, dplyr, GGally, ggplot2, ggthemes, ggvis, httr, lubridate,
 plotly, rio, rmarkdown, shiny, stringr, tidyr)
 ```
-Import data
+Import data from file
 ```{r}
 data <- import("./Data/zipIncome.txt")
 ```
@@ -27,14 +32,57 @@ Plot of our data
 ```{r}
 plot(data)
 ```
+Same plot, but use ggplot
 ```{r}
-ggplot(data = data)
+ggplot(data, aes(x = zipCode, y = income)) + 
+  geom_point()
 ```
-
+Clear our data in range income 7.000 $ < income < 200.000 $ 
+And in same time rename columns, because split function return list and we should 
+transform to dataframe
 ```{r}
-help(ggplot)
+clear_data <- as.data.frame(split(data, cut(data$income, c(7000, 200000))))
+colnames(clear_data) <- c("zipCode", "income")
 ```
-
+That we gave now
 ```{r}
-hist(data$income)
+head(clear_data)
+```
+New summary of clear data
+```{r}
+summary(clear_data)
+```
+This is boxplot of our clearing data
+```{r}
+boxplot(clear_data$income ~ clear_data$zipCode, 
+        ylab = "Income", 
+        xlab = "Zip code", 
+        main = "Plot of income by zip code")
+```
+Plotted out y scale in log scale
+```{r}
+boxplot(clear_data$income ~ clear_data$zipCode,
+        log = "y",
+        ylab = "Income", 
+        xlab = "Zip code", 
+        main = "Plot of income by zip code with log dependicies")
+```
+Set zip code as factor for grouping data by zip code
+```{r}
+clear_data$zipCode <- as.factor(clear_data$zipCode)
+```
+Use ggplot for groupping income by zip code
+```{r}
+ggplot(clear_data, aes(x = zipCode, y = income)) +
+  ylab("Income") +
+  geom_jitter(alpha = 0.2) + 
+  scale_y_log10()
+```
+Add box plot to current plot new layout
+```{r}
+ggplot(clear_data, aes(x = as.factor(zipCode), y = income)) +
+  geom_jitter(aes(col = factor(zipCode)), alpha = 0.2) +
+  geom_boxplot(alpha = 0.1, outlier.size = -Inf) + 
+  scale_y_log10() +
+  labs(color="Region", x="Zip Code", y="Income", title="Average Income by Zip Code")
 ```
