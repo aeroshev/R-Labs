@@ -1,0 +1,50 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+library(pacman)
+p_load(ggplot2, rio)
+```
+Install packages
+
+
+```{r}
+data <- income_elec_state
+centers <- as.integer(7)
+```
+Load data and set qunatity of classes
+
+
+```{r}
+points <- kmeans(data, centers)
+```
+Clustering data by centers assigned up
+
+
+```{r}
+cluster_data <- cbind(data, cluster = points$cluster)
+```
+Join class number to dataframe
+
+
+```{r}
+centroids <- aggregate(cbind(income, elec) ~ cluster, cluster_data, mean)
+```
+Extract data about centroids of clusters
+
+
+```{r}
+states <- row.names(cluster_data)
+```
+Extract index states from dataframe
+
+
+```{r}
+ggplot(cluster_data, aes(x = income, y = elec, colour = factor(cluster))) +
+  geom_point() +
+  geom_text(aes(label = states), hjust=0, vjust=0) +
+  geom_point(data = centroids, size = 4) +
+  labs(color = "Clusters", x = "Income", y = "Elec", title = "Plot of clustering data")
+```
+Plot our data
