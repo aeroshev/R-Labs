@@ -1,0 +1,150 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+install.packages("pacman")
+```
+Installing Packages 
+
+```{r}
+pacman::p_load(arules, arulesViz, ggplot2)
+```
+Loading packages
+
+```{r}
+dataset <- read.transactions("./AssociationRules.csv", sep=" ")
+```
+Read from csv file transactions of list items
+
+```{r}
+str(dataset)
+```
+Show structure
+```{r}
+summary(size(dataset))
+```
+
+```{r}
+itemFrequencyPlot(dataset, topN=10) 
+```
+Show plot of items
+
+```{r}
+set.seed = 220
+```
+
+```{r}
+associa_rules = apriori(data=dataset,  
+                        parameter=list(support=0.01,  
+                                         confidence=0)) 
+```
+
+```{r}
+summary(associa_rules)
+```
+```{r}
+trustly_subset <- subset(associa_rules, confidence >= 0.5)
+
+summary(trustly_subset)
+```
+
+
+```{r}
+# Some 10 sample
+sample_top_rules <- sample(associa_rules, 10)
+# High confidence rules
+rules_conf <- sort(associa_rules, by="confidence", decreasing=TRUE)
+# High lift rules
+rules_lift <- sort(associa_rules, by="lift", decreasing=TRUE)
+# Top 10 rules by confidence
+top_rules_conf <- head(rules_conf, n=10)
+# Top 10 rules by lift
+top_rules_lift = head(rules_lift, n=10)
+```
+
+
+```{r}
+plot(associa_rules, 
+     method="scatterplot", 
+     measure=c("support", "confidence"), 
+     shading="lift"
+)
+```
+```{r}
+plot(associa_rules, 
+     method="scatterplot", 
+     measure=c("support", "lift"), 
+     shading="confidence"
+)
+```
+Scatter plot of all rules
+
+
+```{r}
+plot(associa_rules, 
+     method="scatterplot", 
+     measure=c("support", "confidence"), 
+     shading="lift",
+     engine="htmlwidget"
+)
+```
+```{r}
+plot(associa_rules, 
+     method="scatterplot", 
+     measure=c("support", "lift"), 
+     shading="confidence",
+     engine="htmlwidget"
+)
+```
+
+```{r}
+plot(top_rules_conf, method="paracoord")
+```
+
+```{r}
+plot(top_rules_lift, method="paracoord")
+```
+
+```{r}
+plot(top_rules_conf, method="matrix", measure="confidence")
+```
+Matrix based plot
+
+```{r}
+plot(top_rules_lift, method="matrix", measure="lift")
+```
+
+```{r}
+plot(top_rules_lift, method="grouped")
+```
+
+```{r}
+plot(top_rules_conf, method="graph",  engine="htmlwidget")
+```
+```{r}
+top_3_lift = head(top_rules_lift, n=3)
+
+plot(top_3_lift, method="graph")
+```
+
+```{r}
+hight_trustly_rules <- subset(associa_rules, confidence > 0.8)
+
+first_38_conf = head(sort(hight_trustly_rules, by="confidence", decreasing=TRUE), n=38)
+
+plot(first_38_conf, 
+     method="matrix", 
+     shading=c("lift", "confidence"), 
+     measure=c("lift", "confidence"), 
+     control=list(reorder=FALSE)
+)
+```
+
+
+
+
+
+
+
