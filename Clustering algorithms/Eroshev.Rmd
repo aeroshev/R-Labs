@@ -4,17 +4,21 @@ output: html_notebook
 ---
 ```{r}
 library(pacman)
-p_load(ggplot2, rio)
+p_load(ggplot2, usmap, rio)
 ```
 Install packages
 
 
 ```{r}
-data <- income_elec_state
-centers <- as.integer(7)
+data <- as.data.frame(income_elec_state)
+centers <- as.integer(10)
 ```
-Load data and set qunatity of classes
+Load data and set quantity of classes
 
+```{r}
+head(data)
+```
+That we have
 
 ```{r}
 points <- kmeans(data, centers)
@@ -25,26 +29,44 @@ Clustering data by centers assigned up
 ```{r}
 cluster_data <- cbind(data, cluster = points$cluster)
 ```
-Join class number to dataframe
-
+Join class number to data fram
 
 ```{r}
-centroids <- aggregate(cbind(income, elec) ~ cluster, cluster_data, mean)
+head(cluster_data)
+```
+After clustering
+
+```{r}
+centroids <- aggregate(formula=cbind(income, elec) ~ cluster, 
+                       data=cluster_data, 
+                       FUN=mean)
 ```
 Extract data about centroids of clusters
 
-
 ```{r}
-states <- row.names(cluster_data)
+state <- row.names(cluster_data)
 ```
-Extract index states from dataframe
+Extract index states from data frame
 
 
 ```{r}
-ggplot(cluster_data, aes(x = income, y = elec, colour = factor(cluster))) +
-  geom_point() +
-  geom_text(aes(label = states), hjust=0, vjust=0) +
-  geom_point(data = centroids, size = 4) +
-  labs(color = "Clusters", x = "Income", y = "Elec", title = "Plot of clustering data")
+ggplot(data=cluster_data, aes(x=income, y=elec, colour=factor(cluster))) +
+  geom_point(shape=1) +
+  geom_text(aes(label = states), hjust=0, vjust=-0.5) +
+  geom_point(data = centroids, size=4, shape=8) +
+  labs(color="Clusters", x="Income", y="Elec", title="Plot of clustering data")
 ```
 Plot our data
+
+```{r}
+usmap_data <- cbind(cluster_data, state)
+usmap_data$cluster <- as.factor(usmap_data$cluster)
+plot_usmap(regions="states",
+           data=as.data.frame(usmap_data),
+           values="cluster",
+           labels=TRUE) + 
+  theme(legend.position="right") +
+  labs(title="Clustering data by states"
+       )
+```
+

@@ -98,6 +98,11 @@ clear_data$zipCode <- as.factor(clear_data$zipCode)
 ```
 Set zip code as factor for grouping data by zip code
 
+```{r}
+head(clear_data)
+```
+
+
 
 ```{r}
 ggplot(clear_data, aes(x = zipCode, y = income)) +
