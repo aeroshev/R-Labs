@@ -11,6 +11,7 @@ p_load(ggplot2, usmap, rio, magrittr)
 
 ### Load data and set quantity of classes
 ```{r}
+load("./income_elec_state.Rdata")
 data <- as.data.frame(income_elec_state)
 centers <- as.integer(4)
 ```
@@ -55,7 +56,7 @@ state <- row.names(cluster_data)
 ```{r}
 ggplot(data=cluster_data, aes(x=income, y=elec, colour=factor(cluster))) +
   geom_point(shape=1) +
-  geom_text(aes(label = states), hjust=0, vjust=-0.5) +
+  geom_text(aes(label = state), hjust=0, vjust=-0.5) +
   geom_point(data = centroids, size=4, shape=8) +
   labs(color="Clusters", x="Income", y="Elec", title="Plot of clustering data")
 ```
@@ -77,7 +78,7 @@ plot_usmap(regions="states",
 log_income <- log(data$income, base=10)
 log_elec <- log(data$elec, base=10)
 
-log_data <- as.data.frame(cbind(log_income, log_elec), row.names=states)
+log_data <- as.data.frame(cbind(log_income, log_elec), row.names=state)
 
 log_points <- kmeans(log_data, centers)
 
@@ -97,7 +98,7 @@ head(log_cluster_data)
 ```{r}
 ggplot(data=log_cluster_data,  inherit.aes=FALSE, aes(x=l_income, y=l_elec, colour=factor(l_cluster))) +
   geom_point(shape=1) +
-  geom_text(aes(label = states), hjust=0, vjust=-0.5) +
+  geom_text(aes(label = state), hjust=0, vjust=-0.5) +
   geom_point(data=l_centroids, size=4, shape=8) +
   labs(color="Clusters", x="Income", y="Elec", title="Plot of clustering data")
 ```
@@ -114,7 +115,7 @@ plot(hc)
 
 rect.hclust(hc, k=4, border="red")
 ```
-###Plot of log10 data
+### Plot of log10 data
 ```{r}
 l_hc <- log_data %>%
       dist %>%
