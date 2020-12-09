@@ -11,6 +11,7 @@ p_load(ggplot2, usmap, rio, magrittr)
 
 ### Load data and set quantity of classes
 ```{r}
+load("./income_elec_state.Rdata")
 data <- as.data.frame(income_elec_state)
 centers <- as.integer(4)
 ```
@@ -47,7 +48,7 @@ centroids <- aggregate(formula=cbind(income, elec) ~ cluster,
 
 ### Extract index states from data frame
 ```{r}
-state <- row.names(cluster_data)
+states <- row.names(cluster_data)
 ```
 
 
