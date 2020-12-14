@@ -1,0 +1,81 @@
+---
+title: "Naive Bayes"
+output: html_notebook
+---
+### Install required packages
+```{r}
+library(pacman)
+p_load(ggplot2, tidyverse, caret, caretEnsemble, psych, 
+       Amelia, mice, GGally, rpart, randomForest, e1071, rio)
+```
+
+### Load data
+```{r}
+sample <- import("./nbtrain.csv")
+```
+
+### Summary of sample
+```{r}
+summary(sample)
+sample$income <- as.factor(sample$income)
+```
+
+### Separate data on two sets for train and test model
+```{r}
+train_data <- as.data.frame(sample[1:9010,])
+test_data <- as.data.frame(sample[9011:10010,])
+```
+
+### Training model
+```{r}
+model <- naiveBayes(income ~ age + sex + educ, train_data)
+model
+```
+
+### Testing model
+```{r}
+results <- predict(model, test_data)
+results
+confusion_matrix <- as.data.frame(table(results, test_data$income))
+confusion_matrix
+```
+
+### Confusion matrix
+```{r}
+ggplot(data=confusion_matrix, mapping=aes(x=results, y=Var2)) +
+  geom_tile(aes(fill=Freq)) +
+  geom_text(aes(label=sprintf("%1.0f", Freq)), vjust=1) +
+  scale_fill_gradient(low="blue", high="red", trans="log") +
+  labs(y="Actual", x="Predicted")
+```
+### Missclassification rate
+Another summary about sample 
+```{r}
+summary(test_data)
+```
+
+Overall
+```{r}
+miss_rate <- mean(results != test_data$income)
+miss_rate
+```
+
+For low income
+```{r}
+miss_rate_low <- mean(results != test_data[test_data$income=="10-50K","income"])
+miss_rate_low
+```
+
+For medium income
+```{r}
+miss_rate_medium <- mean(results != test_data[test_data$income=="50-80K","income"])
+miss_rate_medium
+```
+
+For high income
+```{r}
+miss_rate_high <- mean(results != test_data[test_data$income=="GT 80K","income"])
+miss_rate_high
+```
+
+
