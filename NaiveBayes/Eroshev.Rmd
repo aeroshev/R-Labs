@@ -18,6 +18,7 @@ sample <- import("./nbtrain.csv")
 ```{r}
 summary(sample)
 sample$income <- as.factor(sample$income)
+sample$sex <- as.factor(sample$sex)
 ```
 
 ### Separate data on two sets for train and test model
@@ -26,6 +27,7 @@ train_data <- as.data.frame(sample[1:9010,])
 test_data <- as.data.frame(sample[9011:10010,])
 ```
 
+# Naive Bayes Step 1
 ### Training model
 ```{r}
 model <- naiveBayes(income ~ age + sex + educ, train_data)
@@ -78,4 +80,50 @@ miss_rate_high <- mean(results != test_data[test_data$income=="GT 80K","income"]
 miss_rate_high
 ```
 
+# Naive Bayes Step 2
+### Train model
+```{r}
+model_sex <- naiveBayes(sex ~ age + educ + income, train_data)
+model_sex
+```
 
+### Testing model
+```{r}
+predicted_class <- predict(model_sex, test_data)
+predicted_class
+conf_matrix <- as.data.frame(table(predicted_class, test_data$sex))
+conf_matrix
+```
+
+### Confusion matrix
+```{r}
+ggplot(data=conf_matrix, mapping=aes(x=predicted_class, y=Var2)) +
+  geom_tile(aes(fill=Freq)) +
+  geom_text(aes(label=sprintf("%1.0f", Freq)), vjust=1) +
+  scale_fill_gradient(low="blue", high="red", trans="log") +
+  labs(y="Actual", x="Predicted")
+```
+
+### Missclassification rate
+Another summary about sample 
+```{r}
+summary(test_data)
+```
+
+Overall
+```{r}
+miss_rate_2 <- mean(predicted_class != test_data$sex)
+miss_rate_2
+```
+
+For male
+```{r}
+miss_rate_male <- mean(predicted_class != test_data[test_data$sex=="M","sex"])
+miss_rate_male
+```
+
+For female
+```{r}
+miss_rate_female <- mean(predicted_class != test_data[test_data$sex=="F","sex"])
+miss_rate_female
+```
