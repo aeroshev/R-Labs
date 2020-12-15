@@ -1,5 +1,6 @@
 ---
 title: "Naive Bayes"
+author: aeroshev
 output: html_notebook
 ---
 ### Install required packages
@@ -56,6 +57,12 @@ Another summary about sample
 summary(test_data)
 ```
 
+```{r}
+confusion <- table(test_data$income, results)
+confusion
+```
+
+
 Overall
 ```{r}
 miss_rate <- mean(results != test_data$income)
@@ -64,19 +71,19 @@ miss_rate
 
 For low income
 ```{r}
-miss_rate_low <- mean(results != test_data[test_data$income=="10-50K","income"])
+miss_rate_low <- 1 - (confusion[1, 1] / sum(confusion[1,]))
 miss_rate_low
 ```
 
 For medium income
 ```{r}
-miss_rate_medium <- mean(results != test_data[test_data$income=="50-80K","income"])
+miss_rate_medium <- 1 - (confusion[2, 2] / sum(confusion[2,]))
 miss_rate_medium
 ```
 
 For high income
 ```{r}
-miss_rate_high <- mean(results != test_data[test_data$income=="GT 80K","income"])
+miss_rate_high <- 1 - (confusion[3, 3] / sum(confusion[3,]))
 miss_rate_high
 ```
 
@@ -109,6 +116,10 @@ Another summary about sample
 ```{r}
 summary(test_data)
 ```
+```{r}
+xconfusion <- table(test_data$sex, predicted_class)
+xconfusion
+```
 
 Overall
 ```{r}
@@ -118,12 +129,57 @@ miss_rate_2
 
 For male
 ```{r}
-miss_rate_male <- mean(predicted_class != test_data[test_data$sex=="M","sex"])
+miss_rate_male <- 1 - (xconfusion[2, 2] / sum(xconfusion[2,]))
 miss_rate_male
 ```
 
 For female
 ```{r}
-miss_rate_female <- mean(predicted_class != test_data[test_data$sex=="F","sex"])
+miss_rate_female <- 1 - (xconfusion[1,1] / sum(xconfusion[1,]))
 miss_rate_female
 ```
+
+## Research
+### Only male
+```{r}
+only_male <- train_data[train_data$sex=="M",]
+only_male
+```
+### Only female
+```{r}
+only_female <- train_data[train_data$sex=="F",]
+only_female
+```
+### Randomly get 3500 from female and male sets
+```{r}
+random_only_male <- sample_n(only_male, 3500)
+random_only_female <- sample_n(only_female, 3500)
+```
+
+### Merge two frame
+```{r}
+random_data <- rbind(random_only_male, random_only_female)
+random_data
+```
+
+### Train on random
+```{r}
+xmodel <- naiveBayes(sex ~ age + educ + income, random_data)
+xmodel
+```
+
+```{r}
+x_class <- predict(xmodel, test_data)
+x_class
+x_matrix <- as.data.frame(table(x_class, test_data$sex))
+x_matrix
+```
+
+```{r}
+ggplot(data=x_matrix, mapping=aes(x=x_class, y=Var2)) +
+  geom_tile(aes(fill=Freq)) +
+  geom_text(aes(label=sprintf("%1.0f", Freq)), vjust=1) +
+  scale_fill_gradient(low="blue", high="red", trans="log") +
+  labs(y="Actual", x="Predicted")
+```
+
