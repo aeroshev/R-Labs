@@ -1,11 +1,12 @@
 ---
 title: "Clustering algorithms"
+author: aeroshev
 output: html_notebook
 ---
 ### Install packages
 ```{r}
 library(pacman)
-p_load(ggplot2, usmap, rio, magrittr, factoextra, NbClust)
+p_load(ggplot2, usmap, rio, magrittr, factoextra, NbClust, dplyr, cluster, fpc)
 ```
 
 
@@ -13,7 +14,7 @@ p_load(ggplot2, usmap, rio, magrittr, factoextra, NbClust)
 ```{r}
 load("./income_elec_state.Rdata")
 data <- as.data.frame(income_elec_state)
-centers <- as.integer(5)
+centers <- as.integer(4)
 ```
 
 ### That we have
@@ -29,15 +30,15 @@ set.seed(123)
 ### Clustering data by centers assigned up
 ```{r}
 wss <- function(k) {
-  kmeans(data, centers)$tot.withinss
+  kmeans(data, centers, nstart=10)$tot.withinss
 }
-points <- kmeans(data, centers)
+points <- kmeans(data, centers, nstart=10)
 ```
 
 
 ### Join class number to data fram
 ```{r}
-cluster_data <- cbind(data, cluster = points$cluster)
+cluster_data <- cbind(data, cluster=points$cluster)
 ```
 
 ### After clustering
@@ -56,7 +57,7 @@ centroids <- aggregate(formula=cbind(income, elec) ~ cluster,
 
 ### Extract index states from data frame
 ```{r}
-states <- row.names(cluster_data)
+state <- row.names(cluster_data)
 ```
 
 
@@ -64,18 +65,52 @@ states <- row.names(cluster_data)
 ```{r}
 ggplot(data=cluster_data, aes(x=income, y=elec, colour=factor(cluster))) +
   geom_point(shape=1) +
-  geom_text(aes(label = state), hjust=0, vjust=-0.5) +
+  geom_text(aes(label=state), hjust=0, vjust=-0.5) +
   geom_point(data = centroids, size=4, shape=8) +
   labs(color="Clusters", x="Income", y="Elec", title="Plot of clustering data")
 ```
+
 ### Estimate our clusters
 ```{r}
 fviz_nbclust(data, kmeans, method="wss")
 ```
 
-### US map
+## Clear data
+### Remove PR and denomize income
 ```{r}
-usmap_data <- cbind(cluster_data, state)
+remove_these <- c("PR")
+rows_to_remove <- which(row.names(data) %in% remove_these)
+
+cdata <- data[-rows_to_remove,]
+cdata$income <- apply(cdata, 1, function(x) x[1] / 70)
+
+cpoints <- kmeans(cdata, centers, nstart=10)
+
+ccluster_data <- cbind(cdata, cluster = cpoints$cluster)
+
+centroids <- aggregate(formula=cbind(income, elec) ~ cluster, 
+                       data=ccluster_data, 
+                       FUN=mean)
+
+cstate <- row.names(ccluster_data)
+
+ggplot(data=ccluster_data, aes(x=income, y=elec, colour=factor(cluster))) +
+  geom_point(shape=1) +
+  geom_text(aes(label=cstate), hjust=0, vjust=-0.5) +
+  geom_point(data = centroids, size=4, shape=8) +
+  labs(color="Clusters", x="Income", y="Elec", title="Plot of clustering data")
+```
+### Estimate our clusters
+```{r}
+fviz_nbclust(cdata, kmeans, method="wss")
+```
+
+
+
+### US map for clear data
+```{r}
+state <- row.names(cdata)
+usmap_data <- cbind(ccluster_data, state)
 usmap_data$cluster <- as.factor(usmap_data$cluster)
 plot_usmap(regions="states",
            data=as.data.frame(usmap_data),
@@ -84,8 +119,8 @@ plot_usmap(regions="states",
   theme(legend.position="right") +
   labs(title="Clustering data by states")
 ```
-## Experimant with value
 
+## Experimant with value
 ```{r}
 log_income <- log(data$income, base=10)
 log_elec <- log(data$elec, base=10)
@@ -108,34 +143,102 @@ head(log_cluster_data)
 
 ### Plot our data with modified data
 ```{r}
-ggplot(data=log_cluster_data,  inherit.aes=FALSE, aes(x=l_income, y=l_elec, colour=factor(l_cluster))) +
-  geom_point(shape=1) +
-  geom_text(aes(label = state), hjust=0, vjust=-0.5) +
-  geom_point(data=l_centroids, size=4, shape=8) +
-  labs(color="Clusters", x="Income", y="Elec", title="Plot of clustering data")
+#ggplot(data=log_cluster_data,  inherit.aes=FALSE, aes(x=l_income, y=l_elec, #colour=factor(l_cluster))) +
+#  geom_point(shape=1) +
+#  geom_text(aes(label=state), hjust=0, vjust=-0.5) +
+#  geom_point(data=l_centroids, size=4, shape=8) +
+#  labs(color="Clusters", x="Income", y="Elec", title="Plot of clustering data")
 ```
 
 
 # Hierarchical clustering
-### Plot of source data
+### Dissimilarity matrix
 ```{r}
-hc <- data %>%
-      dist %>%
-      hclust
-
-plot(hc)
-
-rect.hclust(hc, k=4, border="red")
-```
-### Plot of log10 data
-```{r}
-l_hc <- log_data %>%
-      dist %>%
-      hclust
-
-plot(l_hc)
-
-rect.hclust(l_hc, k=4, border="red")
+gower.dist <- daisy(data, metric=c("gower"))
+head(as.matrix(gower.dist))
 ```
 
 
+
+```{r}
+cstats.table <- function(dist, tree, k) {
+clust.assess <- c("cluster.number","n","within.cluster.ss","average.within","average.between",
+                  "wb.ratio","dunn2","avg.silwidth")
+clust.size <- c("cluster.size")
+stats.names <- c()
+row.clust <- c()
+output.stats <- matrix(ncol = k, nrow = length(clust.assess))
+cluster.sizes <- matrix(ncol = k, nrow = k)
+for(i in c(1:k)){
+  row.clust[i] <- paste("Cluster-", i, " size")
+}
+for(i in c(2:k)){
+  stats.names[i] <- paste("Test", i-1)
+  
+  for(j in seq_along(clust.assess)){
+    output.stats[j, i] <- unlist(cluster.stats(d = dist, clustering = cutree(tree, k = i))[clust.assess])[j]
+    
+  }
+  
+  for(d in 1:k) {
+    cluster.sizes[d, i] <- unlist(cluster.stats(d = dist, clustering = cutree(tree, k = i))[clust.size])[d]
+    dim(cluster.sizes[d, i]) <- c(length(cluster.sizes[i]), 1)
+    cluster.sizes[d, i]
+    
+  }
+}
+output.stats.df <- data.frame(output.stats)
+cluster.sizes <- data.frame(cluster.sizes)
+cluster.sizes[is.na(cluster.sizes)] <- 0
+rows.all <- c(clust.assess, row.clust)
+# rownames(output.stats.df) <- clust.assess
+output <- rbind(output.stats.df, cluster.sizes)[ ,-1]
+colnames(output) <- stats.names[2:k]
+rownames(output) <- rows.all
+is.num <- sapply(output, is.numeric)
+output[is.num] <- lapply(output[is.num], round, 2)
+output
+}
+```
+
+### Division clustering from high to low
+```{r}
+divisive.clust <- diana(as.matrix(gower.dist),
+                        diss=TRUE,
+                        keep.diss=TRUE
+                        )
+plot(divisive.clust, main = "Divisive")
+rect.hclust(aggl.clust.c, k=5, border="red")
+```
+
+### Elbow method for divisive
+```{r}
+ggplot(data = data.frame(t(cstats.table(gower.dist, divisive.clust, 15))), 
+  aes(x=cluster.number, y=within.cluster.ss)) + 
+  geom_point()+
+  geom_line()+
+  ggtitle("Divisive clustering") +
+  labs(x = "Num.of clusters", y = "Within clusters sum of squares (SS)") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+### Aglomerativ clustering for low to high
+```{r}
+aggl.clust.c <- hclust(gower.dist, method = "complete")
+plot(aggl.clust.c,
+     main = "Agglomerative, complete linkages")
+
+rect.hclust(aggl.clust.c, k=6, border="red")
+```
+
+### Cluster Assessment
+```{r}
+ggplot(data = data.frame(t(cstats.table(gower.dist, aggl.clust.c, 15))), 
+  aes(x=cluster.number, y=within.cluster.ss)) + 
+  geom_point()+
+  geom_line()+
+  ggtitle("Agglomerative clustering") +
+  labs(x = "Num.of clusters", y = "Within clusters sum of squares (SS)") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
