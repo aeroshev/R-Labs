@@ -1,0 +1,143 @@
+---
+title: "Linear regression"
+author: "aeroshev"
+output: html_notebook
+---
+### Load modules
+```{r}
+library(pacman)
+p_load(rio, dplyr, hexbin, RColorBrewer, ggplot2)
+```
+
+# Load anf prepair data
+### Load data
+```{r}
+df <- as.data.frame(import("./zeta.csv"))
+df <- transform(df, 
+          meanage=as.numeric(meanage), 
+          meaneducation=as.numeric(meaneducation), 
+          meanhouseholdincome=as.numeric(meanhouseholdincome))
+head(df)
+```
+
+### Remove duplicates "meanhouseholdincome"
+```{r}
+df <- df %>% distinct(meanhouseholdincome, .keep_all=TRUE)
+head(df)
+```
+
+### Remove columns "zcta" and "sex"
+```{r}
+df <- within(df, rm(V1, zcta, sex))
+head(df)
+```
+### Remove outliers
+```{r}
+df <- df %>% filter(between(meaneducation, 8, 18)) %>%
+             filter(between(meanhouseholdincome, 10000, 200000)) %>%
+             filter(between(meanemployment, 0, 3)) %>%
+             filter(between(meanage, 20, 60))
+head(df)
+```
+
+### Create a new variable 
+```{r}
+df <- cbind(df, log10(df$meanhouseholdincome))
+head(df)
+```
+
+### Reaname columns
+```{r}
+colnames(df) <- c("age", "education", "employment", "income", "log_income")
+head(df)
+```
+
+# Analysis
+`a.` ##  We will be analyzing this data with income as the dependent variable 
+and the other columns as independent variables.  
+Create a scatter plot showing the effect age has on log_income and paste it here.  
+Do you see any linear relationship between the two variables? <br>
+### Simple plot
+```{r}
+plot(df$log_income ~ df$age, ylab="log_income", xlab="age")
+```
+### Pretty plot
+```{r}
+opacity <- colorRampPalette(rev(brewer.pal(11,'Spectral')))
+hexbinplot(df$log_income ~ df$age, 
+           ylab="log_income", 
+           xlab="age", 
+           colramp=opacity)
+```
+### Plot with prediction
+```{r}
+hexbinplot(df$log_income ~ df$age, 
+           trans=sqrt, 
+           inv=function(x) x^2, 
+           type=c("r"),
+           ylab="log_income",
+           xlab="age",
+           colramp=opacity)
+```
+
+### Create a linear regression <br>
+`b.` 
+Create a linear regression model between log_income and age. 
+What is the interpretation of the t-value? 
+What kind of t-value would indicate a significant coefficient?
+```{r}
+model_age <- lm(formula=log_income ~ age, data=df)
+summary(model_age)
+```
+`c.` What is the interpretation of the R-squared value?  
+What kind of R-squared value would indicate a good fit?
+`d.` What is the interpretation of the F-statistic?  
+What kind of F-statistic indicates a strong linear regression model?
+`e.` View a detailed summary of the previous model.
+What is the R-squared value?  
+Does this suggest that the model is a good fit? Why?
+`f.` Create a scatter plot showing the effect education has on log_income.  
+Do you see any linear relationship between the two variables?
+```{r}
+plot(df$log_income ~ df$education, ylab="log_income", xlab="education")
+```
+### Pretty plot
+```{r}
+hexbinplot(df$log_income ~ df$education, 
+           ylab="log_income", 
+           xlab="education", 
+           type=c("r"), 
+           colramp=opacity)
+```
+
+`g.` Analyze a detailed summary of a linear regression model between log_income and education.  What is the R-squared value?  Is the model a good fit?  Is it better than the previous model?
+```{r}
+model_education <- lm(formula=log_income ~ education, data=df)
+summary(model_education)
+```
+
+`h.` Analyze a detailed summary of a linear regression model between the dependent variable log_income, and the independent variables age, education, and employment.  Is this model a good fit?  Why?  What conclusions can be made about the different independent variables?
+```{r}
+model <- lm(formula=log_income ~ age + education + employment, data=df)
+summary(model)
+```
+```{r}
+df$predict <- predict(model, select(df, "age", "education", "employment"))
+plot(df$predict ~ df$log_income, ylab="Predicted data", xlab="Training data")
+abline(a=0, b=1, col="red")
+```
+
+### Pretty plot
+```{r}
+hexbinplot(df$predict ~ df$log_income, 
+           ylab="Predicted Income", 
+           xlab="Log Income", 
+           trans=sqrt, 
+           inv=function(x) x^2, 
+           type=c("r"), 
+           colramp=opacity)
+
+```
+
+
+

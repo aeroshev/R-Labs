@@ -6,7 +6,7 @@ output: html_notebook
 ### Installing Packages 
 ```{r}
 library(pacman)
-p_load(arules, arulesViz, ggplot2)
+p_load(arules, arulesViz, ggplot2, tidyrules, dplyr, C50, pander)
 ```
 
 ### Read list of transactions
@@ -17,22 +17,34 @@ dataset <- read.transactions("./AssociationRules.csv", sep=" ")
 ## Summary of dataset
 ### Max quantity
 ```{r}
-summary(size(dataset))
+freq_tab <- data.frame(itemFrequency(dataset, type="absolute"))
+freq_tab <- cbind(rownames(freq_tab), freq_tab)
+rownames(freq_tab) <- NULL
+names(freq_tab) <- c("item", "freq")
+freq_tab[freq_tab$freq == max(freq_tab$freq),]
 ```
 
 ### Most popular item
 ```{r}
-itemFrequencyPlot(dataset, topN=10) 
+itemFrequencyPlot(dataset, type="absolute", topN=10) 
 ```
+```{r}
+summary(dataset)
+```
+
 
 ## Make association rules
 ```{r}
-rules = apriori(data=dataset, parameter=list(support=0.01, confidence=0)) 
+rules <- apriori(data=dataset, parameter=list(support=0.01, 
+                                             confidence=0,
+                                             target="rules",
+                                             minlen=2))
 ```
 
 ### Summary rules
 ```{r}
 summary(rules)
+length(rules)
 ```
 ```{r}
 inspect(rules)
@@ -40,28 +52,23 @@ inspect(rules)
 
 ### More confidence rules
 ```{r}
-trules <- subset(rules, confidence >= 0.5)
+rules.hconf <- subset(rules, confidence >= 0.5)
+length(rules.hconf)
 ```
-```{r}
-summary(trules)
-```
-```{r}
-inspect(trules)
-```
-
 
 
 ```{r}
 # Some 10 sample
-top_rules <- sample(rules, 10)
+rules.top <- sample(rules, 10)
 # High confidence rules
-rules_conf <- sort(rules, by="confidence", decreasing=TRUE)
+rules.conf <- sort(rules, by="confidence", decreasing=TRUE)
 # High lift rules
-rules_lift <- sort(rules, by="lift", decreasing=TRUE)
+rules.hlift <- sort(rules, by="lift", decreasing=TRUE)
+rules.llift <- sort(rules, by="lift", decreasing=FALSE)
 # Top 10 rules by confidence
-top_rules_conf <- head(rules_conf, n=10)
+rules.top_conf <- head(rules.conf, n=10)
 # Top 10 rules by lift
-top_rules_lift = head(rules_lift, n=10)
+rules.top_lift = head(rules.hlift, n=10)
 ```
 
 
@@ -77,7 +84,7 @@ plot(rules,
 
 ### Plot of hight confidence rules
 ```{r}
-plot(trules, 
+plot(rules.hconf, 
      method="scatterplot", 
      measure=c("support", "confidence"), 
      shading="lift",
@@ -95,7 +102,7 @@ plot(rules,
 )
 ```
 ```{r}
-plot(trules, 
+plot(rules.hconf, 
      method="scatterplot", 
      measure=c("support", "lift"), 
      shading="confidence",
@@ -103,13 +110,51 @@ plot(trules,
 )
 ```
 ```{r}
-head(quality(trules))
+head(quality(rules.hconf))
+```
+```{r}
+rules.hsup <- subset(rules, support >= 0.1)
+
+plot(rules.hsup, 
+     method="scatterplot", 
+     measure=c("support", "confidence"), 
+     shading="lift",
+     engine="htmlwidget"
+)
+```
+
+```{r}
+inspect(head(rules.hsup, n=3, by="confidence", decreasong=TRUE))
+```
+
+
+### Point k
+```{r}
+inspect(head(rules.hlift, 10))
+```
+```{r}
+plot(head(rules.hlift, 10), 
+     method="matrix",
+     measure="lift",
+     control=list(recorder=FALSE),
+     engine="htmlwidget")
+```
+
+```{r}
+inspect(head(rules.llift, 10))
+```
+```{r}
+plot(head(rules.llift, 10), 
+     method="matrix", 
+     measure="lift",
+     control=list(recorder=FALSE),
+     engine="htmlwidget")
 ```
 
 
 
 ```{r}
-plot(associa_rules, 
+plot(rules, 
      method="scatterplot", 
      measure=c("support", "confidence"), 
      shading="lift",
@@ -117,7 +162,7 @@ plot(associa_rules,
 )
 ```
 ```{r}
-plot(associa_rules, 
+plot(rules, 
      method="scatterplot", 
      measure=c("support", "lift"), 
      shading="confidence",
@@ -126,50 +171,84 @@ plot(associa_rules,
 ```
 
 ```{r}
-plot(top_rules_conf, method="paracoord")
+plot(rules.top_conf, method="paracoord")
 ```
 
 ```{r}
-plot(top_rules_lift, method="paracoord")
+plot(rules.top_lift, method="paracoord")
 ```
 
 ```{r}
-plot(top_rules_conf, method="matrix", measure="confidence")
-```
-Matrix based plot
-
-```{r}
-plot(top_rules_lift, method="matrix", measure="lift")
+plot(rules.top_lift, method="grouped")
 ```
 
 ```{r}
-plot(top_rules_lift, method="grouped")
-```
-
-```{r}
-plot(top_rules_conf, method="graph",  engine="htmlwidget")
+plot(rules.top_conf, method="graph", engine="htmlwidget")
 ```
 ```{r}
-top_3_lift = head(top_rules_lift, n=3)
+top_3_lift = head(rules.top_lift, n=3)
 
 plot(top_3_lift, method="graph")
 ```
 
 ```{r}
-hight_trustly_rules <- subset(associa_rules, confidence > 0.8)
+rules.hight_trustly <- subset(rules, confidence >= 0.8)
 
-first_38_conf = head(sort(hight_trustly_rules, by="confidence", decreasing=TRUE), n=38)
+tail_40_conf = tail(sort(rules.hight_trustly, 
+                          by="lift", 
+                          decreasing=TRUE), n=40)
 
-plot(first_38_conf, 
+plot(rules.hight_trustly, 
      method="matrix", 
      shading=c("lift", "confidence"), 
      measure=c("lift", "confidence"), 
      control=list(reorder=FALSE)
 )
 ```
+## Train model prediction
+```{r}
+dataset.train <- dataset[1:8000,]
+dataset.test <- dataset[8001:10000,]
+```
 
+```{r}
+model <- apriori(data=dataset.train, parameter=list(support=0.01, 
+                                                    confidence=0.1,
+                                                    target="rules",
+                                                    minlen=2))
+validate_model <- apriori(data=dataset.test, parameter=list(support=0.01,
+                                                            confidence=0.1,
+                                                            target="rules",
+                                                            minlen=2))
+```
 
+```{r}
+train_df <- DATAFRAME(model)
+validate_df <- DATAFRAME(validate_model)
+```
 
+### Mean support for trained rules 
+```{r}
+cat('Support train:\t', mean(train_df$support), '\n')
+```
 
+### Mean confidence for trained rules 
+```{r}
+cat('Confidence train:\t', mean(train_df$confidence), '\n')
+```
+
+### Mean support for validate rules 
+```{r}
+cat('Support validate:\t', mean(validate_df$support), '\n')
+```
+
+### Mean confidence for validate rules 
+```{r}
+cat('Confidence validate:\t', mean(validate_df$confidence), '\n')
+```
+
+```{r}
+
+```
 
 
