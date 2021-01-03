@@ -59,14 +59,18 @@ Create a scatter plot showing the effect age has on log_income and paste it here
 Do you see any linear relationship between the two variables? <br>
 ### Simple plot
 ```{r}
-plot(df$log_income ~ df$age, ylab="log_income", xlab="age")
+plot(df$log_income ~ df$age, 
+     ylab="log_income", 
+     xlab="age",
+     main="Primary log income ~ age",)
+with(df, lines(loess.smooth(age, log_income), col="red"))
 ```
 ### Pretty plot
 ```{r}
 opacity <- colorRampPalette(rev(brewer.pal(11,'Spectral')))
 hexbinplot(df$log_income ~ df$age, 
            ylab="log_income", 
-           xlab="age", 
+           xlab="age",
            colramp=opacity)
 ```
 ### Plot with prediction
@@ -77,6 +81,7 @@ hexbinplot(df$log_income ~ df$age,
            type=c("r"),
            ylab="log_income",
            xlab="age",
+           main="Regression of log income ~ age",
            colramp=opacity)
 ```
 
@@ -89,6 +94,10 @@ What kind of t-value would indicate a significant coefficient?
 model_age <- lm(formula=log_income ~ age, data=df)
 summary(model_age)
 ```
+```{r}
+cor(df$log_income, df$age)
+```
+
 `c.` What is the interpretation of the R-squared value?  
 What kind of R-squared value would indicate a good fit?
 `d.` What is the interpretation of the F-statistic?  
@@ -99,14 +108,19 @@ Does this suggest that the model is a good fit? Why?
 `f.` Create a scatter plot showing the effect education has on log_income.  
 Do you see any linear relationship between the two variables?
 ```{r}
-plot(df$log_income ~ df$education, ylab="log_income", xlab="education")
+plot(df$log_income ~ df$education, 
+     ylab="log_income", 
+     xlab="education",
+     main="Primary log income ~ education")
+with(df, lines(loess.smooth(education, log_income), col="red"))
 ```
 ### Pretty plot
 ```{r}
 hexbinplot(df$log_income ~ df$education, 
            ylab="log_income", 
            xlab="education", 
-           type=c("r"), 
+           type=c("r"),
+           main="Regression of log income ~ education",
            colramp=opacity)
 ```
 
@@ -123,7 +137,11 @@ summary(model)
 ```
 ```{r}
 df$predict <- predict(model, select(df, "age", "education", "employment"))
-plot(df$predict ~ df$log_income, ylab="Predicted data", xlab="Training data")
+plot(df$predict ~ df$log_income, 
+     ylab="Predicted data", 
+     xlab="Training data",
+     main="Analyze results model")
+with(df, lines(loess.smooth(log_income, predict), col="blue"))
 abline(a=0, b=1, col="red")
 ```
 
@@ -131,13 +149,114 @@ abline(a=0, b=1, col="red")
 ```{r}
 hexbinplot(df$predict ~ df$log_income, 
            ylab="Predicted Income", 
-           xlab="Log Income", 
+           xlab="Training Income", 
            trans=sqrt, 
            inv=function(x) x^2, 
-           type=c("r"), 
+           type=c("r"),
+           main="Analyze results model",
+           panel=function(x, y, ...) {
+             panel.hexbinplot(x, y, ...)
+             lattice::panel.abline(a = 0, b = 1, col="red")
+           },
            colramp=opacity)
-
+```
+### Trend of age + education + employment for linear model
+```{r}
+for (i in 1:nrow(df)) {
+  df[i, "age_education_employment"] <- sum(df[i, "age"], 
+                                          df[i, "education"], 
+                                          df[i, "employment"])
+}
+hexbinplot(df$log_income ~ df$age_education_employment,
+           ylab="Log income", 
+           xlab="age + education + employment", 
+           trans=sqrt, 
+           inv=function(x) x^2, 
+           type=c("r"),
+           main="Regression of log_income ~ age + education + employment",
+           colramp=opacity)
 ```
 
+### Primary data trend
+```{r}
+plot(log_income ~ age_education_employment, 
+     data=df,
+     xlab="age + education + employment",
+     ylab="log income",
+     main="Primary log income ~ age + education + employment", 
+     col="black"
+)
+with(df, lines(loess.smooth(age_education_employment, log_income), col="red"))
+```
+### Corelasion between
+```{r}
+cor(df$log_income, df$age_education_employment)
+```
 
+### Try create more interesting
+```{r}
+best_model <- lm(formula=log_income ~ education + employment, data=df)
+summary(best_model)
+```
+### Primary data
+```{r}
+for (i in 1:nrow(df)) {
+  df[i, "education_employment"] <- sum(df[i, "education"],
+                                       df[i, "employment"])
+}
+plot(log_income ~ education_employment, 
+     data=df,
+     xlab="education + employment",
+     ylab="log income",
+     main="Primary log income ~ education + employment", 
+     col="black"
+)
+with(df, lines(loess.smooth(education_employment, log_income), col="red"))
+```
+### Regression of log income ~ education + employment
+```{r}
+hexbinplot(df$log_income ~ df$education_employment,
+           ylab="Log income", 
+           xlab="education + employment", 
+           trans=sqrt, 
+           inv=function(x) x^2, 
+           type=c("r"),
+           main="Regression of log_income ~ education + employment",
+           colramp=opacity)
+```
+### Accuracy model
+```{r}
+df$best_predict <- predict(best_model, select(df, "education", "employment"))
+
+hexbinplot(df$best_predict ~ df$log_income, 
+           ylab="Predicted Income", 
+           xlab="Training Income", 
+           trans=sqrt, 
+           inv=function(x) x^2, 
+           type=c("r"),
+           main="Analyze results model",
+           panel=function(x, y, ...) {
+             panel.hexbinplot(x, y, ...)
+             lattice::panel.abline(a = 0, b = 1, col="red")
+           },
+           colramp=opacity)
+```
+```{r}
+plot(df$best_predict ~ df$log_income, 
+     ylab="Predicted data", 
+     xlab="Training data",
+     main="Analyze results model")
+with(df, lines(loess.smooth(log_income, best_predict), col="blue"))
+abline(a=0, b=1, col="red")
+```
+
+```{r}
+AIC(model)
+```
+```{r}
+AIC(best_model)
+```
+```{r}
+?hexbinplot
+```
 

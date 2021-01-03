@@ -35,6 +35,15 @@ model <- naiveBayes(income ~ age + sex + educ, train_data)
 model
 ```
 
+```{r}
+ageCounts <- table(train_data[, c("income", "age")]) 
+ageCounts
+
+ageCounts <- ageCounts / rowSums(ageCounts)
+ageCounts
+```
+
+
 ### Testing model
 ```{r}
 results <- predict(model, test_data)
@@ -181,5 +190,8 @@ ggplot(data=x_matrix, mapping=aes(x=x_class, y=Var2)) +
   geom_text(aes(label=sprintf("%1.0f", Freq)), vjust=1) +
   scale_fill_gradient(low="blue", high="red", trans="log") +
   labs(y="Actual", x="Predicted")
+```
+```{r}
+modelx <- train(sex ~ age + educ + income, train_data)
 ```
 
