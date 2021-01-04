@@ -1,0 +1,85 @@
+---
+title: "Decesion Tree"
+author: "aeroshev"
+output: html_notebook
+---
+### Installing depencies
+```{r}
+library(pacman)
+p_load(rio, ggplot2, rpart, rpart.plot, ROCR)
+```
+
+### Load data
+```{r}
+dataset <- import("https://hyper.mephi.ru/assets/courseware/v1/345e8b1c6ea11120575066ec4ac58f4a/asset-v1:MEPhIx+CS712DS+2020Fall+type@asset+block/survey.csv")
+head(dataset)
+```
+### Split data to train and test set
+```{r}
+train_data <- dataset[1:600,]
+test_data <- dataset[601:750,]
+```
+
+### Summary
+```{r}
+summary(train_data)
+```
+
+## Gain information index
+### Training model with gain information index
+```{r}
+model <- rpart(as.factor(MYDEPV) ~ Price + Income + Age, 
+               method="class",
+               data=train_data, 
+               parms=list(split="information"))
+printcp(model)
+```
+
+### Plot of tree with gain information index
+```{r}
+rpart.plot(model, type=4, extra=1)
+```
+
+### Confusion matrix
+```{r}
+predicted <- predict(model, train_data, type="class")
+confusion_matrix <- as.data.frame(table(as.factor(predicted), train_data$MYDEPV))
+ggplot(data=confusion_matrix, mapping=aes(x=Var1, y=Var2)) +
+  geom_tile(mapping=aes(fill=Freq)) +
+  geom_text(mapping=aes(label=Freq)) +
+  scale_fill_gradient(low="blue", high="red", trans="log1p") +
+  labs(x="Predicted", 
+       y="Actual", 
+       title="Confusion matrix of decision tree model with gain information index")
+```
+
+
+## Gini index
+### Training model with gini index
+```{r}
+model_gini <- rpart(as.factor(MYDEPV) ~ Price + Income + Age, 
+               method="class",
+               data=train_data, 
+               parms=list(split="gini"))
+printcp(model_gini)
+```
+
+### Plot new model with gini index
+```{r}
+rpart.plot(model_gini, type=4, extra=1)
+```
+
+### Confusion matrix
+```{r}
+predicted_gini <- predict(model_gini, train_data, type="class")
+confusion_matrix_gini <- as.data.frame(table(as.factor(predicted_gini), 
+                                        train_data$MYDEPV))
+ggplot(data=confusion_matrix_gini, mapping=aes(x=Var1, y=Var2)) +
+  geom_tile(mapping=aes(fill=Freq)) +
+  geom_text(mapping=aes(label=Freq)) +
+  scale_fill_gradient(low="blue", high="red", trans="log1p") +
+  labs(x="Predicted", 
+       y="Actual", 
+       title="Confusion matrix of decision tree model with gini index")
+```
+
