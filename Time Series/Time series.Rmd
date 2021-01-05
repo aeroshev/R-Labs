@@ -1,0 +1,89 @@
+---
+title: "Time series"
+author: "aeroshev"
+output: html_notebook
+---
+
+### Install packages
+```{r}
+library(pacman)
+p_load(rio, ggplot2, forecast)
+```
+
+### Load data
+```{r}
+raw_data <- scan("./jj.dat")
+df <- as.data.frame(raw_data)
+colnames(df) <- c("income")
+income_ts <- ts(raw_data)
+income_ts
+```
+
+### Visualize time series
+```{r}
+plot.ts(income_ts, xlab="Quartal", ylab="Income")
+```
+```{r}
+ma_income_ts <- ma(income_ts, order=8)
+
+plot(ma_income_ts)
+```
+
+
+### Plot of diff with previous moment time
+```{r}
+plot(diff(income_ts), xlab="Quartal")
+abline(a=0, b=0, col="red")
+```
+
+```{r}
+log_df <- apply(df, 1, log10)
+log_income_ts <- ts(log_df)
+log_income_ts
+```
+
+```{r}
+plot.ts(log_income_ts, xlab="Quartal", ylab="Log income")
+```
+```{r}
+plot(diff(log_income_ts), xlab="Quartal")
+abline(a=0, b=0, col="red")
+```
+
+
+```{r}
+acf(diff(log_income_ts))
+```
+
+```{r}
+pacf(diff(log_income_ts))
+```
+
+### Create ARIMA model
+```{r}
+model <- arima(diff(log_income_ts), 
+               order=c(0,1,0), 
+               seasonal=list(order=c(1,0,0), period=12))
+model
+```
+```{r}
+AIC(model)
+```
+
+```{r}
+forecast_model <- forecast(income_ts)
+forecast_model
+```
+
+```{r}
+plot(forecast_model)
+```
+
+### Simulation
+```{r}
+ts.sim_AR4 <- arima.sim(n= 10000, list(ar=c(0.9, -0.5, .2, -.3)))
+plot(ts.sim_AR4)
+abline(a=0, b=0, col="red")
+```
+
+
